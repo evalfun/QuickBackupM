@@ -4,12 +4,13 @@
 	"name": "Quick Backup Multi",
 	"description": {
 		"en_us": "A backup / restore plugin, with multiple backup slot",
-		"zh_cn": "多槽位备份/回档插件"
+		"zh_cn": "多槽位备份/回档插件 修改版本 支持差异备份 减少ssd写入"
 	},
 	"author": [
-		"Fallen_Breath"
+		"Fallen_Breath",
+		"evalfun"
 	],
-	"link": "https://github.com/TISUnion/QuickBackupM",
+	"link": "https://github.com/evalfun/QuickBackupM",
 	"dependencies": {
 		"mcdreforged": ">=2.1.2"
 	},
