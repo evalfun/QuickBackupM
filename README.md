@@ -4,7 +4,9 @@
 [English](https://github.com/TISUnion/QuickBackupM/blob/master/README_en.md)
 
 一个支持多槽位的快速备份＆回档插件
+
 修改版本，支持差异备份，减少ssd写入
+
 `master` 分支为中文版，`english` 分支为英文版
 
 需要 `v2.0.1` 以上的 [MCDReforged](https://github.com/Fallen-Breath/MCDReforged)
