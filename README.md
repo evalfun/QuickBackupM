@@ -5,7 +5,10 @@
 
 一个支持多槽位的快速备份＆回档插件
 
-修改版本，支持差异备份，减少ssd写入
+修改版本，特性如下：
+- 支持差异备份，减少ssd写入
+- 还原备份前将当前世界保存至槽位0
+
 
 `master` 分支为中文版，`english` 分支为英文版
 
@@ -13,7 +16,7 @@
 
 ![snapshot](https://raw.githubusercontent.com/TISUnion/QuickBackupM/master/snapshot.png)
 
-备份的存档将会存放至 qb_multi 文件夹中，文件目录格式如下：
+备份的存档将会存放至 qb_multi 文件夹中，其中槽位目录下的content.json保存了文件的sha256值、路径和大小，files文件夹下保存的是存档文件，文件名为它的sha256值。文件目录格式如下：
 ```
 mcd_root/
     server.py
@@ -22,17 +25,19 @@ mcd_root/
         world/
 
     qb_multi/
+        slot0/
+            info.json
+            content.json
         slot1/
             info.json
-            world/
+            content.json
 
         slot2/
             ...
         ...
 
-        overwrite/
-            info.txt
-            world/
+        files/
+            aabbccdd001122334455
 ```
 
 ## 命令格式说明
@@ -152,9 +157,11 @@ mcd_root/
 
 ### overwrite_backup_folder
 
-默认值: `overwrite`
+~~默认值: `overwrite`~~
 
-被覆盖的存档的备份位置，在配置文件均为默认值的情况下路径为 `./qb_multi/overwrite`
+~~被覆盖的存档的备份位置，在配置文件均为默认值的情况下路径为 `./qb_multi/overwrite`~~
+
+此选项没有作用了，还原备份前会将当前存档保存至槽位0
 
 ### world_names
 

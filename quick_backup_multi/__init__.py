@@ -28,6 +28,11 @@ operation_name = RText('?')
 def tr(translation_key: str, *args) -> RTextMCDRTranslation:
     return ServerInterface.get_instance().rtr('quick_backup_multi.{}'.format(translation_key), *args)
 
+def format_file_size(size: int):
+    if size < 2 ** 30:
+        return f'{round(size / 2 ** 20, 2)} MB'
+    else:
+        return f'{round(size / 2 ** 30, 2)} GB'
 
 def print_message(source: CommandSource, msg, tell=True, prefix='[QBM] '):
     msg = RTextList(prefix, msg)
@@ -274,8 +279,8 @@ def delete_backup(source: CommandSource, slot: int):
         print_message(source, tr('delete_backup.fail', slot, e), tell=False)
     else:
         print_message(source, tr('delete_backup.success', slot),  tell=False)
-        print_message(source, "deleted %d files, size: %.2fMB" %
-                      (deleted_files, deleted_files_size/1024/1024), tell=False)
+        print_message(source, "deleted %d files, size: %s" %
+                      (deleted_files, format_file_size(deleted_files_size )), tell=False)
 
 
 @new_thread('QBM - rename')
@@ -475,9 +480,9 @@ def _create_backup(source: CommandSource, comment: Optional[str]):
             slot_path, comment)
         end_time = time.time()
         print_message(source, tr('create_backup.success',
-                      round(end_time - start_time, 1)), tell=False)
-        print_message(source, "write %d files, size: %.2f MB, skip %d files" % (
-            write_file_count, write_file_size/1024/1024, skip_file_count))
+                                 round(end_time - start_time, 1)), tell=False)
+        print_message(source, "write %d files, size: %s, skip %d files" % (
+            write_file_count, format_file_size(write_file_size ), skip_file_count))
         print_message(source, format_slot_info(
             info_dict=slot_info), tell=False)
     except Exception as e:
@@ -500,7 +505,7 @@ def restore_backup(source: CommandSource, slot: int):
     slot_selected = slot
     abort_restore = False
     print_message(source, tr('restore_backup.echo_action', slot,
-                  format_slot_info(info_dict=slot_info)), tell=False)
+                             format_slot_info(info_dict=slot_info)), tell=False)
     print_message(
         source,
         command_run(tr('restore_backup.confirm_hint', Prefix), tr(
@@ -583,7 +588,7 @@ def list_backup(source: CommandSource, size_display: bool = None):
         size = 0
         for root, dirs, files in os.walk(dir_):
             size += sum([os.path.getsize(os.path.join(root, name))
-                        for name in files])
+                         for name in files])
         return size
 
     def format_dir_size(size: int):
@@ -599,9 +604,14 @@ def list_backup(source: CommandSource, size_display: bool = None):
         for i in range(-1, get_slot_count()):
             slot_idx = i + 1
             content_data = get_slot_content(slot_idx)
-            if content_data is not None:
+            if content_data is not None: # 将文件大小和hash信息放进dict里面
+                files_dict = {}
+                for i in content_data["files"]:
+                    files_dict.update({
+                        i["hash"]: i["size"]
+                    })
                 slot_files_dict.update({
-                    slot_idx: content_data
+                    slot_idx: files_dict
                 })
 
     for i in range(-1, get_slot_count()):
@@ -609,24 +619,20 @@ def list_backup(source: CommandSource, size_display: bool = None):
         slot_info = format_slot_info(slot_number=slot_idx)
         dedicated_dir_size = 0
         dir_size = 0
-        if size_display:
-            content_data = slot_files_dict.get(slot_idx)
-            if content_data is not None:
-                for j in content_data["files"]:
-                    hash = j["hash"]
+        if size_display: # 将此slot的文件hash信息与其它slot的进行比较，挑出仅在此插槽出现的文件
+            files_dict = slot_files_dict.get(slot_idx)
+            if files_dict is not None:
+                for j in files_dict:
                     dedicated = True
                     for k in slot_files_dict:
                         if k == slot_idx or slot_files_dict.get(k) is None:
                             continue
-                        for l in slot_files_dict[k]["files"]:
-                            if hash == l["hash"]:
-                                dedicated = False
-                                break
-                        if dedicated == False:
+                        if slot_files_dict[k].get(j) is not None:
+                            dedicated = False
                             break
                     if dedicated == True:
-                        dedicated_dir_size = dedicated_dir_size + j["size"]
-                    dir_size = dir_size + j["size"]
+                        dedicated_dir_size = dedicated_dir_size + files_dict[j]
+                    dir_size = dir_size + files_dict[j]
 
         # noinspection PyTypeChecker
         text = RTextList(
@@ -648,7 +654,7 @@ def list_backup(source: CommandSource, size_display: bool = None):
         print_message(source, text, prefix='')
     if size_display:
         print_message(source, tr('list_backup.total_space',
-                      format_dir_size(backup_size)), prefix='')
+                                 format_dir_size(backup_size)), prefix='')
 
 
 @new_thread('QBM - help')
@@ -710,25 +716,25 @@ def register_command(server: PluginServerInterface):
             get_literal_node('make').
             runs(lambda src: create_backup(src, None)).
             then(GreedyText('comment').runs(lambda src,
-                 ctx: create_backup(src, ctx['comment'])))
+                                            ctx: create_backup(src, ctx['comment'])))
         ).
         then(
             get_literal_node('back').
             runs(lambda src: restore_backup(src, 1)).
             then(get_slot_node().runs(lambda src,
-                 ctx: restore_backup(src, ctx['slot'])))
+                                      ctx: restore_backup(src, ctx['slot'])))
         ).
         then(
             get_literal_node('del').
             then(get_slot_node().runs(lambda src,
-                 ctx: delete_backup(src, ctx['slot'])))
+                                      ctx: delete_backup(src, ctx['slot'])))
         ).
         then(
             get_literal_node('rename').
             then(
                 get_slot_node().
                 then(GreedyText('comment').runs(lambda src,
-                     ctx: rename_backup(src, ctx['slot'], ctx['comment'])))
+                                                ctx: rename_backup(src, ctx['slot'], ctx['comment'])))
             )
         ).
         then(get_literal_node('confirm').runs(confirm_restore)).
